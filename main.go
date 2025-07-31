@@ -24,11 +24,25 @@ import (
 const (
 	Version = "2.0.0"
 	ConfigFileName = ".wayhack-config.json"
+	OutputsDir = ".wayhack-outputs"
+	MetadataFile = "metadata.json"
 )
 
 type Config struct {
 	APIUrl string `json:"apiUrl"`
 	APIKey string `json:"apiKey"`
+}
+
+type ScanMetadata struct {
+	ID        string    `json:"id"`
+	Tool      string    `json:"tool"`
+	Command   string    `json:"command"`
+	Target    string    `json:"target"`
+	Timestamp time.Time `json:"timestamp"`
+	Duration  string    `json:"duration"`
+	Status    string    `json:"status"`
+	OutputDir string    `json:"outputDir"`
+	ExitCode  int       `json:"exitCode"`
 }
 
 type Tool struct {
@@ -92,11 +106,20 @@ Command Generation:
   wayhack generate nuclei http://example.com -c "Web Application"
   wayhack generate dirsearch http://example.com --interactive
 
+View Scan Results:
+  wayhack view                                     List all scans
+  wayhack view scan_1234567890                     View specific scan output
+  wayhack view --latest                            View latest scan
+  wayhack view --latest --tool ffuf               View latest ffuf scan
+  wayhack view --count 10                          View last 10 scans
+
 Note: 
   - Use 'wayhack run' to execute tools directly with their full arguments
   - Use 'wayhack generate' to get AI-suggested commands from the API
+  - Use 'wayhack view' to see saved outputs from previous scans
   - Complex arguments with spaces or special characters are properly handled
-  - Quotes in commands are preserved and passed correctly to tools`,
+  - Quotes in commands are preserved and passed correctly to tools
+  - All tool outputs are automatically saved and can be viewed later`,
 	}
 
 	// Load config
@@ -109,6 +132,7 @@ Note:
 	rootCmd.AddCommand(generateCmd())
 	rootCmd.AddCommand(listCmd())
 	rootCmd.AddCommand(listenCmd())
+	rootCmd.AddCommand(viewCmd())
 	rootCmd.AddCommand(versionCmd())
 
 	if err := rootCmd.Execute(); err != nil {
@@ -239,25 +263,20 @@ func runCmd() *cobra.Command {
 				fmt.Printf("%s Please install %s first\n", yellow(""), toolName)
 				return
 			}
+ 
+			// Extract target URL from arguments for metadata
+			target := extractTarget(toolArgs)
 
-			// Execute the command
-			execCmd := exec.Command(toolName, toolArgs...)
-			execCmd.Stdout = os.Stdout
-			execCmd.Stderr = os.Stderr
-			execCmd.Stdin = os.Stdin
-
-			err := execCmd.Run()
-			fmt.Println()
-
+			// Execute the command with output tracking
+			scanID, err := executeWithTracking(toolName, toolArgs, fullCommand, target)
 			if err != nil {
-				if exitError, ok := err.(*exec.ExitError); ok {
-					fmt.Printf("%s Command failed with exit code %d\n", red("❌"), exitError.ExitCode())
-				} else {
-					fmt.Printf("%s Failed to start %s: %v\n", red("❌"), toolName, err)
-				}
-			} else {
-				fmt.Printf("%s Command completed successfully\n", green("✅"))
+				fmt.Printf("%s Command execution failed: %v\n", red("❌"), err)
+				return
 			}
+
+			fmt.Printf("%s Command completed successfully\n", green("✅"))
+			fmt.Printf("%s Scan ID: %s\n", blue("📋"), scanID)
+			fmt.Printf("%s Use 'wayhack view %s' to see the output\n", yellow("💡"), scanID)
 		},
 	}
 
@@ -563,7 +582,7 @@ func processServerCommand(commandID, command, tool, url string) {
 		command = commands[0].Command
 	}
 
-	// Execute the command
+	// Execute the command with output tracking
 	fmt.Printf("%s Executing: %s\n", green("🚀"), command)
 	
 	parts := parseCommand(command)
@@ -573,17 +592,34 @@ func processServerCommand(commandID, command, tool, url string) {
 		return
 	}
 
-	cmd := exec.Command(parts[0], parts[1:]...)
-	output, err := cmd.CombinedOutput()
-	
+	// Use output tracking for server commands too
+	scanID, err := executeWithTracking(tool, parts[1:], command, url)
 	if err != nil {
 		fmt.Printf("%s Command execution failed: %v\n", red("❌"), err)
-		updateCommandStatus(commandID, "failed", fmt.Sprintf("Execution failed: %v\nOutput: %s", err, string(output)))
+		updateCommandStatus(commandID, "failed", fmt.Sprintf("Execution failed: %v", err))
 		return
 	}
 
 	fmt.Printf("%s Command completed successfully\n", green("✅"))
-	updateCommandStatus(commandID, "completed", string(output))
+	fmt.Printf("%s Scan ID: %s\n", blue("📋"), scanID)
+	
+	// Read the output for server response
+	scans, err := loadScanMetadata()
+	if err == nil {
+		for _, scan := range scans {
+			if scan.ID == scanID {
+				stdoutFile := filepath.Join(scan.OutputDir, "stdout.txt")
+				if data, err := os.ReadFile(stdoutFile); err == nil {
+					updateCommandStatus(commandID, "completed", string(data))
+				} else {
+					updateCommandStatus(commandID, "completed", "Command completed successfully")
+				}
+				return
+			}
+		}
+	}
+	
+	updateCommandStatus(commandID, "completed", "Command completed successfully")
 }
 
 func updateCommandStatus(commandID, status, result string) {
@@ -620,6 +656,116 @@ func updateCommandStatus(commandID, status, result string) {
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("%s Failed to update command status, server returned %d\n", red("❌"), resp.StatusCode)
 	}
+}
+
+func viewCmd() *cobra.Command {
+	var latest bool
+	var count int
+	var tool string
+
+	cmd := &cobra.Command{
+		Use:   "view [scan-id]",
+		Short: "View scan outputs and results",
+		Long: `View scan outputs and results with various filtering options.
+
+Examples:
+  wayhack view                          List all scans
+  wayhack view scan-id-123             View specific scan output
+  wayhack view --latest                View latest scan
+  wayhack view --latest --tool ffuf    View latest ffuf scan
+  wayhack view --count 10              View last 10 scans
+  wayhack view --count 5 --tool nuclei View last 5 nuclei scans`,
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) == 1 {
+				// View specific scan
+				scanID := args[0]
+				viewScanOutput(scanID)
+				return
+			}
+
+			// List scans with filters
+			scans, err := loadScanMetadata()
+			if err != nil {
+				fmt.Printf("%s Failed to load scan metadata: %v\n", red("❌"), err)
+				return
+			}
+
+			if len(scans) == 0 {
+				fmt.Printf("%s No scans found\n", yellow("📭"))
+				fmt.Printf("%s Run some tools first using 'wayhack run <tool> <args>'\n", gray(""))
+				return
+			}
+
+			// Filter by tool if specified
+			if tool != "" {
+				var filtered []ScanMetadata
+				for _, scan := range scans {
+					if strings.EqualFold(scan.Tool, tool) {
+						filtered = append(filtered, scan)
+					}
+				}
+				scans = filtered
+			}
+
+			if len(scans) == 0 {
+				fmt.Printf("%s No scans found for tool: %s\n", yellow("📭"), tool)
+				return
+			}
+
+			// Sort by timestamp (newest first)
+			for i := 0; i < len(scans)-1; i++ {
+				for j := i + 1; j < len(scans); j++ {
+					if scans[i].Timestamp.Before(scans[j].Timestamp) {
+						scans[i], scans[j] = scans[j], scans[i]
+					}
+				}
+			}
+
+			if latest {
+				// View latest scan
+				viewScanOutput(scans[0].ID)
+				return
+			}
+
+			// Limit count if specified
+			if count > 0 && count < len(scans) {
+				scans = scans[:count]
+			}
+
+			// List scans
+			fmt.Printf("%s Scan History\n", blue("📋"))
+			fmt.Println()
+			fmt.Printf("%-12s %-10s %-8s %-20s %-30s %s\n", "ID", "Tool", "Status", "Timestamp", "Target", "Duration")
+			fmt.Printf("%s\n", strings.Repeat("-", 100))
+
+			for _, scan := range scans {
+				statusIcon := green("✅")
+				if scan.Status == "failed" {
+					statusIcon = red("❌")
+				} else if scan.Status == "running" {
+					statusIcon = yellow("⏳")
+				}
+
+				timestamp := scan.Timestamp.Format("2006-01-02 15:04:05")
+				target := scan.Target
+				if len(target) > 25 {
+					target = target[:22] + "..."
+				}
+
+				fmt.Printf("%-12s %-10s %s %-7s %-20s %-30s %s\n",
+					scan.ID[:12], scan.Tool, statusIcon, scan.Status, timestamp, target, scan.Duration)
+			}
+
+			fmt.Println()
+			fmt.Printf("%s Use 'wayhack view <scan-id>' to view specific scan output\n", yellow("💡"))
+		},
+	}
+
+	cmd.Flags().BoolVarP(&latest, "latest", "l", false, "View latest scan")
+	cmd.Flags().IntVarP(&count, "count", "c", 0, "Number of scans to show (0 = all)")
+	cmd.Flags().StringVarP(&tool, "tool", "t", "", "Filter by tool name")
+
+	return cmd
 }
 
 func versionCmd() *cobra.Command {
@@ -801,4 +947,248 @@ func parseCommand(commandString string) []string {
 	}
 
 	return args
+}
+
+// Output tracking helper functions
+
+func getOutputsDir() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return OutputsDir
+	}
+	return filepath.Join(homeDir, OutputsDir)
+}
+
+func generateScanID() string {
+	return fmt.Sprintf("scan_%d", time.Now().Unix())
+}
+
+func extractTarget(args []string) string {
+	// Look for common URL patterns in arguments
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "http://") || strings.HasPrefix(arg, "https://") {
+			return arg
+		}
+		if strings.Contains(arg, "://") {
+			return arg
+		}
+	}
+	
+	// Look for -u, --url, -t, --target flags
+	for i, arg := range args {
+		if (arg == "-u" || arg == "--url" || arg == "-t" || arg == "--target") && i+1 < len(args) {
+			return args[i+1]
+		}
+		if strings.HasPrefix(arg, "-u=") || strings.HasPrefix(arg, "--url=") {
+			return strings.SplitN(arg, "=", 2)[1]
+		}
+		if strings.HasPrefix(arg, "-t=") || strings.HasPrefix(arg, "--target=") {
+			return strings.SplitN(arg, "=", 2)[1]
+		}
+	}
+	
+	return "unknown"
+}
+
+func executeWithTracking(toolName string, toolArgs []string, fullCommand, target string) (string, error) {
+	scanID := generateScanID()
+	startTime := time.Now()
+	
+	// Create output directory
+	outputsDir := getOutputsDir()
+	scanDir := filepath.Join(outputsDir, scanID)
+	err := os.MkdirAll(scanDir, 0755)
+	if err != nil {
+		return "", fmt.Errorf("failed to create output directory: %v", err)
+	}
+	
+	// Create output files
+	stdoutFile := filepath.Join(scanDir, "stdout.txt")
+	stderrFile := filepath.Join(scanDir, "stderr.txt")
+	
+	// Create metadata
+	metadata := ScanMetadata{
+		ID:        scanID,
+		Tool:      toolName,
+		Command:   fullCommand,
+		Target:    target,
+		Timestamp: startTime,
+		Status:    "running",
+		OutputDir: scanDir,
+	}
+	
+	// Save initial metadata
+	err = saveScanMetadata(metadata)
+	if err != nil {
+		return "", fmt.Errorf("failed to save metadata: %v", err)
+	}
+	
+	// Execute command with output capture
+	cmd := exec.Command(toolName, toolArgs...)
+	
+	// Create output files
+	stdout, err := os.Create(stdoutFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to create stdout file: %v", err)
+	}
+	defer stdout.Close()
+	
+	stderr, err := os.Create(stderrFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to create stderr file: %v", err)
+	}
+	defer stderr.Close()
+	
+	// Use MultiWriter to write to both file and console
+	cmd.Stdout = io.MultiWriter(os.Stdout, stdout)
+	cmd.Stderr = io.MultiWriter(os.Stderr, stderr)
+	cmd.Stdin = os.Stdin
+	
+	// Execute command
+	err = cmd.Run()
+	endTime := time.Now()
+	duration := endTime.Sub(startTime)
+	
+	// Update metadata with results
+	metadata.Duration = duration.String()
+	metadata.Status = "completed"
+	metadata.ExitCode = 0
+	
+	if err != nil {
+		metadata.Status = "failed"
+		if exitError, ok := err.(*exec.ExitError); ok {
+			metadata.ExitCode = exitError.ExitCode()
+		} else {
+			metadata.ExitCode = 1
+		}
+	}
+	
+	// Save final metadata
+	err = saveScanMetadata(metadata)
+	if err != nil {
+		fmt.Printf("%s Warning: Failed to save final metadata: %v\n", yellow("⚠️"), err)
+	}
+	
+	return scanID, nil
+}
+
+func saveScanMetadata(metadata ScanMetadata) error {
+	outputsDir := getOutputsDir()
+	metadataPath := filepath.Join(outputsDir, MetadataFile)
+	
+	// Load existing metadata
+	var allMetadata []ScanMetadata
+	if data, err := os.ReadFile(metadataPath); err == nil {
+		json.Unmarshal(data, &allMetadata)
+	}
+	
+	// Update or append metadata
+	found := false
+	for i, existing := range allMetadata {
+		if existing.ID == metadata.ID {
+			allMetadata[i] = metadata
+			found = true
+			break
+		}
+	}
+	
+	if !found {
+		allMetadata = append(allMetadata, metadata)
+	}
+	
+	// Save metadata
+	data, err := json.MarshalIndent(allMetadata, "", "  ")
+	if err != nil {
+		return err
+	}
+	
+	// Ensure directory exists
+	err = os.MkdirAll(outputsDir, 0755)
+	if err != nil {
+		return err
+	}
+	
+	return os.WriteFile(metadataPath, data, 0644)
+}
+
+func loadScanMetadata() ([]ScanMetadata, error) {
+	outputsDir := getOutputsDir()
+	metadataPath := filepath.Join(outputsDir, MetadataFile)
+	
+	data, err := os.ReadFile(metadataPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []ScanMetadata{}, nil
+		}
+		return nil, err
+	}
+	
+	var metadata []ScanMetadata
+	err = json.Unmarshal(data, &metadata)
+	return metadata, err
+}
+
+func viewScanOutput(scanID string) {
+	// Load metadata to find scan
+	scans, err := loadScanMetadata()
+	if err != nil {
+		fmt.Printf("%s Failed to load scan metadata: %v\n", red("❌"), err)
+		return
+	}
+	
+	var targetScan *ScanMetadata
+	for _, scan := range scans {
+		if strings.HasPrefix(scan.ID, scanID) {
+			targetScan = &scan
+			break
+		}
+	}
+	
+	if targetScan == nil {
+		fmt.Printf("%s Scan not found: %s\n", red("❌"), scanID)
+		fmt.Printf("%s Use 'wayhack view' to list all scans\n", yellow("💡"))
+		return
+	}
+	
+	// Display scan information
+	fmt.Printf("%s Scan Details\n", blue("📋"))
+	fmt.Printf("ID:        %s\n", targetScan.ID)
+	fmt.Printf("Tool:      %s\n", targetScan.Tool)
+	fmt.Printf("Command:   %s\n", targetScan.Command)
+	fmt.Printf("Target:    %s\n", targetScan.Target)
+	fmt.Printf("Timestamp: %s\n", targetScan.Timestamp.Format("2006-01-02 15:04:05"))
+	fmt.Printf("Duration:  %s\n", targetScan.Duration)
+	fmt.Printf("Status:    %s\n", targetScan.Status)
+	fmt.Printf("Exit Code: %d\n", targetScan.ExitCode)
+	fmt.Println()
+	
+	// Display output files
+	stdoutFile := filepath.Join(targetScan.OutputDir, "stdout.txt")
+	stderrFile := filepath.Join(targetScan.OutputDir, "stderr.txt")
+	
+	// Show stdout
+	if data, err := os.ReadFile(stdoutFile); err == nil && len(data) > 0 {
+		fmt.Printf("%s Standard Output:\n", green("📄"))
+		fmt.Printf("%s\n", strings.Repeat("-", 50))
+		fmt.Print(string(data))
+		if !strings.HasSuffix(string(data), "\n") {
+			fmt.Println()
+		}
+		fmt.Printf("%s\n", strings.Repeat("-", 50))
+		fmt.Println()
+	}
+	
+	// Show stderr if there are errors
+	if data, err := os.ReadFile(stderrFile); err == nil && len(data) > 0 {
+		fmt.Printf("%s Standard Error:\n", red("📄"))
+		fmt.Printf("%s\n", strings.Repeat("-", 50))
+		fmt.Print(string(data))
+		if !strings.HasSuffix(string(data), "\n") {
+			fmt.Println()
+		}
+		fmt.Printf("%s\n", strings.Repeat("-", 50))
+		fmt.Println()
+	}
+	
+	fmt.Printf("%s Output files saved in: %s\n", blue("📁"), targetScan.OutputDir)
 }

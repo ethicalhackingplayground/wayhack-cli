@@ -1,386 +1,170 @@
-# 🚀 WayHack CLI
+# WayHack CLI (Go Version)
 
-<div align="center">
+A powerful command-line interface for WayHack bug bounty automation, now written in Go for better performance and easier distribution.
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey?style=for-the-badge)](https://github.com/ethicalhackingplayground/wayhack-cli/releases)
-[![GitHub Release](https://img.shields.io/github/v/release/ethicalhackingplayground/wayhack-cli?style=for-the-badge)](https://github.com/ethicalhackingplayground/wayhack-cli/releases)
+## Features
 
-**A powerful, AI-enhanced command-line interface for bug bounty automation and reconnaissance**
+- **Fast and Lightweight**: Written in Go, no runtime dependencies
+- **Cross-Platform**: Single binary for Windows, Linux, and macOS
+- **Tool Integration**: Direct execution of bug bounty tools (ffuf, nuclei, gobuster, etc.)
+- **Command Generation**: AI-powered command suggestions from WayHack API
+- **Interactive Mode**: Select and run commands interactively
+- **Tool Status Checking**: Verify which tools are installed on your system
+- **Output Tracking**: Automatically saves all tool outputs with metadata for later review
+- **Scan Management**: View and manage previous scan results with filtering options
 
-[🔗 Website](https://wayhack.sh) • [📖 Documentation](https://wayhack.sh/docs) • [🐛 Report Bug](https://github.com/ethicalhackingplayground/wayhack-cli/issues) • [💡 Request Feature](https://github.com/ethicalhackingplayground/wayhack-cli/issues)
+## Installation
 
-</div>
+### Quick Install (Recommended)
 
----
+Download the pre-built binary for your platform:
 
-## 📋 Table of Contents
+- **Windows**: [wayhack-windows-amd64.exe](https://wayhack.sh/api/cli/download?platform=win)
+- **Linux**: [wayhack-linux-amd64](https://wayhack.sh/api/cli/download?platform=linux)
+- **macOS Intel**: [wayhack-darwin-amd64](https://wayhack.sh/api/cli/download?platform=macos)
+- **macOS Apple Silicon**: [wayhack-darwin-arm64](https://wayhack.sh/api/cli/download?platform=macos-arm)
 
-- [🎯 Overview](#-overview)
-- [✨ Features](#-features)
-- [🚀 Quick Start](#-quick-start)
-- [📦 Installation](#-installation)
-- [⚙️ Configuration](#️-configuration)
-- [📚 Usage Guide](#-usage-guide)
-- [🛠️ Supported Tools](#️-supported-tools)
-- [🔧 Development](#-development)
-- [🤝 Contributing](#-contributing)
-- [🐛 Troubleshooting](#-troubleshooting)
-- [📄 License](#-license)
+### Manual Installation
 
----
+1. Download the appropriate binary for your platform
+2. Make it executable (Linux/macOS): `chmod +x wayhack-*`
+3. Move to your PATH: `mv wayhack-* /usr/local/bin/wayhack`
+4. Run setup: `wayhack setup`
 
-## 🎯 Overview
-
-WayHack CLI is a next-generation command-line tool designed for bug bounty hunters and security researchers. Built with Go for maximum performance and portability, it seamlessly integrates with popular reconnaissance tools while providing AI-powered command generation and intelligent automation.
-
-### 🌟 Why WayHack CLI?
-
-- **🚀 Performance**: Written in Go with zero runtime dependencies
-- **🤖 AI-Powered**: Intelligent command generation and optimization
-- **🔄 Automation**: Streamline your bug bounty workflow
-- **🌐 Cross-Platform**: Single binary for all major operating systems
-- **🔧 Tool Integration**: Works with your existing security toolkit
-- **📊 Real-time Monitoring**: Track command execution and results
-
----
-
-## ✨ Features
-
-### 🎯 Core Capabilities
-
-| Feature | Description |
-|---------|-------------|
-| **🤖 AI Command Generation** | Generate optimized commands using advanced AI algorithms |
-| **⚡ Direct Tool Execution** | Execute security tools directly through the CLI |
-| **🔍 Interactive Mode** | Select and run commands with an intuitive interface |
-| **📊 Tool Status Monitoring** | Real-time verification of installed tools |
-| **🔄 Workflow Automation** | Chain multiple commands for complex reconnaissance |
-| **📈 Progress Tracking** | Monitor command execution and results in real-time |
-
-### 🛡️ Security & Performance
-
-- **🔒 Secure API Communication**: Encrypted communication with WayHack platform
-- **⚡ Lightning Fast**: Optimized Go implementation for maximum speed
-- **💾 Memory Efficient**: Minimal resource usage even with large datasets
-- **🔄 Concurrent Execution**: Run multiple tools simultaneously
-- **📝 Comprehensive Logging**: Detailed execution logs for debugging
-
-### 🌐 Platform Support
-
-| Platform | Architecture | Status |
-|----------|-------------|---------|
-| **Windows** | x64 | ✅ Fully Supported |
-| **Linux** | x64, ARM64 | ✅ Fully Supported |
-| **macOS** | Intel, Apple Silicon | ✅ Fully Supported |
-
----
-
-## 🚀 Quick Start
-
-Get up and running in under 2 minutes:
+### Build from Source
 
 ```bash
-# 1. Download and install
-curl -sSL https://wayhack.sh/install.sh | bash
-
-# 2. Configure your API key
-wayhack setup
-
-# 3. Check your tools
-wayhack check
-
-# 4. Start hunting!
-wayhack generate ffuf https://example.com --interactive
-```
-
----
-
-## 📦 Installation
-
-### 🎯 Method 1: Quick Install (Recommended)
-
-**Linux/macOS:**
-```bash
-curl -sSL https://wayhack.sh/install.sh | bash
-```
-
-**Windows (PowerShell):**
-```powershell
-iwr -useb https://wayhack.sh/install.ps1 | iex
-```
-
-### 🔗 Method 2: Direct Download
-
-Download the latest release for your platform:
-
-| Platform | Download Link |
-|----------|---------------|
-| **Windows x64** | [wayhack-windows-amd64.exe](https://wayhack.sh/api/cli/download?platform=win) |
-| **Linux x64** | [wayhack-linux-amd64](https://wayhack.sh/api/cli/download?platform=linux) |
-| **Linux ARM64** | [wayhack-linux-arm64](https://wayhack.sh/api/cli/download?platform=linux-arm) |
-| **macOS Intel** | [wayhack-darwin-amd64](https://wayhack.sh/api/cli/download?platform=macos) |
-| **macOS Apple Silicon** | [wayhack-darwin-arm64](https://wayhack.sh/api/cli/download?platform=macos-arm) |
-
-### 🛠️ Method 3: Build from Source
-
-```bash
-# Clone the repository
 git clone https://github.com/ethicalhackingplayground/wayhack-cli.git
-cd wayhack-cli/cli
-
-# Install dependencies
+cd wayhack-cli
 go mod download
-
-# Build the binary
-go build -o wayhack .
-
-# Install globally (optional)
-sudo mv wayhack /usr/local/bin/
+go build -o wayhack main.go
 ```
 
-### 📋 Post-Installation Setup
+## Setup
 
-1. **Make executable** (Linux/macOS):
-   ```bash
-   chmod +x wayhack
-   ```
-
-2. **Add to PATH** (optional):
-   ```bash
-   sudo mv wayhack /usr/local/bin/
-   ```
-
-3. **Verify installation**:
-   ```bash
-   wayhack version
-   ```
-
----
-
-## ⚙️ Configuration
-
-### 🔑 API Key Setup
-
-1. **Get your API key** from [WayHack Settings](https://wayhack.sh/settings)
-2. **Run the setup wizard**:
+1. Get your API key from [WayHack Settings](https://wayhack.sh/settings)
+2. Run the setup command:
    ```bash
    wayhack setup
    ```
-3. **Enter your credentials** when prompted
+3. Enter your API URL and key when prompted
 
-### 📁 Configuration File
+## Usage
 
-Configuration is stored in `~/.wayhack-config.json`:
-
-```json
-{
-  "apiUrl": "https://wayhack.sh",
-  "apiKey": "wh_your_api_key_here",
-  "preferences": {
-    "interactive": true,
-    "colorOutput": true,
-    "maxConcurrent": 5,
-    "timeout": 300
-  }
-}
-```
-
-### 🎛️ Environment Variables
-
-You can also configure WayHack CLI using environment variables:
+### Basic Commands
 
 ```bash
-export WAYHACK_API_URL="https://wayhack.sh"
-export WAYHACK_API_KEY="wh_your_api_key_here"
-export WAYHACK_MAX_CONCURRENT="5"
-export WAYHACK_TIMEOUT="300"
-```
-
----
-
-## 📚 Usage Guide
-
-### 🔍 Basic Commands
-
-```bash
-# Display help
-wayhack --help
-
-# Show version information
-wayhack version
-
-# Check installed tools
+# Check which tools are installed
 wayhack check
 
 # List available tools from API
 wayhack list
 
-# Configure API settings
-wayhack setup
+# View scan results and history
+wayhack view
+
+# Show version information
+wayhack version
 ```
 
-### 🎯 Tool Execution
+### Direct Tool Execution
 
-#### Direct Execution
 ```bash
 # Run ffuf with custom parameters
-wayhack run ffuf -u https://example.com/FUZZ -w /path/to/wordlist.txt
+wayhack run ffuf -u http://example.com/FUZZ -w wordlist.txt
 
-# Execute nuclei vulnerability scan
-wayhack run nuclei -u https://example.com -t /path/to/templates/
+# Run nuclei scan
+wayhack run nuclei -u http://example.com -t templates/
 
-# Perform directory brute-force with gobuster
-wayhack run gobuster dir -u https://example.com -w /usr/share/wordlists/dirb/common.txt
-
-# HTTP probing with httpx
-wayhack run httpx -l domains.txt -o results.txt
+# Run gobuster directory scan
+wayhack run gobuster dir -u http://example.com -w /usr/share/wordlists/dirb/common.txt
 ```
 
-#### Batch Execution
-```bash
-# Run multiple commands from file
-wayhack batch commands.txt
+### Command Generation
 
-# Execute with custom timeout
-wayhack batch commands.txt --timeout 600
+```bash
+# Generate commands for a tool and URL
+wayhack generate ffuf http://example.com
+
+# Interactive mode - select and run commands
+wayhack generate nuclei http://example.com --interactive
+
+# Filter by category
+wayhack generate dirsearch http://example.com --category "Web Application"
 ```
 
-### 🤖 AI-Powered Command Generation
+### View Scan Results
 
-#### Basic Generation
+All tool executions are automatically tracked and saved. Use the `view` command to access previous scan results:
+
 ```bash
-# Generate commands for a specific tool
-wayhack generate ffuf https://example.com
+# List all previous scans
+wayhack view
 
-# Generate with specific category filter
-wayhack generate nuclei https://example.com --category "Web Application"
+# View a specific scan by ID
+wayhack view scan_20240101_120000_nmap
 
-# Generate multiple tool commands
-wayhack generate --tools ffuf,nuclei,gobuster https://example.com
+# View the latest scan
+wayhack view --latest
+
+# View the last 5 scans
+wayhack view --count 5
+
+# View latest scan from a specific tool
+wayhack view --tool nuclei --latest
+
+# View last 10 scans from a specific tool
+wayhack view --tool ffuf --count 10
 ```
 
-#### Interactive Mode
-```bash
-# Interactive command selection
-wayhack generate ffuf https://example.com --interactive
+#### Scan Output Structure
 
-# Interactive with preview
-wayhack generate nuclei https://example.com --interactive --preview
+Each scan creates a unique directory with the following structure:
+```
+~/.wayhack/outputs/
+├── scan_20240101_120000_nmap/
+│   ├── stdout.txt          # Tool output
+│   ├── stderr.txt          # Error output
+│   └── metadata.json      # Scan metadata
+├── scan_20240101_130000_nuclei/
+│   ├── stdout.txt
+│   ├── stderr.txt
+│   └── metadata.json
+└── scans.json             # Global scan index
 ```
 
-#### Advanced Generation
+#### Scan Metadata
+
+Each scan includes detailed metadata:
+- **Scan ID**: Unique identifier with timestamp
+- **Tool**: Security tool used
+- **Command**: Full command executed
+- **Target**: Target URL or IP
+- **Timestamp**: When the scan was executed
+- **Duration**: How long the scan took
+- **Status**: Success or failure
+- **Exit Code**: Tool exit code
+
+## Supported Tools
+
+The CLI can execute and generate commands for:
+
+- **ffuf** - Fast web fuzzer
+- **dirsearch** - Directory/file brute-forcer
+- **nuclei** - Vulnerability scanner
+- **gobuster** - Directory/DNS/vhost brute-forcer
+- **httpx** - HTTP toolkit
+- And any other command-line tool installed on your system
+
+## Building
+
+### Prerequisites
+
+- Go 1.21 or later
+
+### Build Commands
+
 ```bash
-# Generate with custom parameters
-wayhack generate ffuf https://example.com \
-  --wordlist /path/to/wordlist.txt \
-  --threads 50 \
-  --timeout 10
-
-# Generate and save to file
-wayhack generate gobuster https://example.com --output commands.txt
-
-# Generate with specific techniques
-wayhack generate nuclei https://example.com --techniques sqli,xss,rce
-```
-
-### 📊 Monitoring & Results
-
-```bash
-# Monitor running commands
-wayhack status
-
-# View command history
-wayhack history
-
-# Export results
-wayhack export --format json --output results.json
-
-# View detailed logs
-wayhack logs --tail 100
-```
-
----
-
-## 🛠️ Supported Tools
-
-WayHack CLI integrates with 50+ popular security tools:
-
-### 🌐 Web Application Testing
-
-| Tool | Category | Description |
-|------|----------|-------------|
-| **ffuf** | Fuzzing | Fast web fuzzer for directory/file discovery |
-| **dirsearch** | Discovery | Advanced directory/file brute-forcer |
-| **gobuster** | Discovery | Directory/DNS/vhost brute-forcer |
-| **feroxbuster** | Discovery | Fast, simple, recursive content discovery |
-| **wfuzz** | Fuzzing | Web application fuzzer |
-
-### 🔍 Vulnerability Scanning
-
-| Tool | Category | Description |
-|------|----------|-------------|
-| **nuclei** | Vulnerability | Fast and customizable vulnerability scanner |
-| **nikto** | Web Scanner | Web server scanner |
-| **sqlmap** | SQL Injection | Automatic SQL injection exploitation tool |
-| **xsstrike** | XSS | Advanced XSS detection suite |
-| **commix** | Command Injection | Command injection exploitation tool |
-
-### 🌍 Network & Infrastructure
-
-| Tool | Category | Description |
-|------|----------|-------------|
-| **nmap** | Port Scanning | Network discovery and security auditing |
-| **masscan** | Port Scanning | High-speed port scanner |
-| **httpx** | HTTP Probing | Fast HTTP toolkit |
-| **subfinder** | Subdomain | Subdomain discovery tool |
-| **amass** | OSINT | In-depth attack surface mapping |
-
-### 📡 OSINT & Reconnaissance
-
-| Tool | Category | Description |
-|------|----------|-------------|
-| **theHarvester** | OSINT | E-mail, subdomain, and people names harvester |
-| **recon-ng** | Framework | Full-featured reconnaissance framework |
-| **shodan** | Search Engine | Search engine for Internet-connected devices |
-| **censys** | Search Engine | Search engine for Internet assets |
-| **waybackurls** | Archive | Fetch URLs from Wayback Machine |
-
-### 🔧 Utilities & Helpers
-
-| Tool | Category | Description |
-|------|----------|-------------|
-| **curl** | HTTP Client | Command-line HTTP client |
-| **wget** | Downloader | Network downloader |
-| **jq** | JSON Parser | Command-line JSON processor |
-| **grep** | Text Search | Pattern searching utility |
-| **awk** | Text Processing | Pattern scanning and processing |
-
-> **Note**: WayHack CLI can execute any command-line tool installed on your system, not just the ones listed above.
-
----
-
-## 🔧 Development
-
-### 🏗️ Building from Source
-
-#### Prerequisites
-- **Go 1.21+** - [Download Go](https://golang.org/dl/)
-- **Git** - [Download Git](https://git-scm.com/downloads)
-
-#### Build Process
-```bash
-# Clone repository
-git clone https://github.com/ethicalhackingplayground/wayhack-cli.git
-cd wayhack-cli/cli
-
-# Download dependencies
-go mod download
-
-# Run tests
-go test ./...
-
 # Build for current platform
 go build -o wayhack .
 
@@ -389,208 +173,88 @@ go build -o wayhack .
 build.bat     # Windows
 ```
 
-#### Cross-Platform Building
+### Cross-Platform Build
+
 ```bash
-# Windows x64
-GOOS=windows GOARCH=amd64 go build -o dist/wayhack-windows-amd64.exe .
+# Windows
+GOOS=windows GOARCH=amd64 go build -o wayhack-windows.exe .
 
-# Linux x64
-GOOS=linux GOARCH=amd64 go build -o dist/wayhack-linux-amd64 .
+# Linux
+GOOS=linux GOARCH=amd64 go build -o wayhack-linux .
 
-# Linux ARM64
-GOOS=linux GOARCH=arm64 go build -o dist/wayhack-linux-arm64 .
-
-# macOS Intel
-GOOS=darwin GOARCH=amd64 go build -o dist/wayhack-darwin-amd64 .
-
-# macOS Apple Silicon
-GOOS=darwin GOARCH=arm64 go build -o dist/wayhack-darwin-arm64 .
+# macOS
+GOOS=darwin GOARCH=amd64 go build -o wayhack-macos .
 ```
 
-### 📦 Dependencies
+## Configuration
 
-| Package | Purpose | License |
-|---------|---------|---------|
-| [cobra](https://github.com/spf13/cobra) | CLI framework | Apache 2.0 |
-| [viper](https://github.com/spf13/viper) | Configuration management | MIT |
-| [color](https://github.com/fatih/color) | Colored terminal output | MIT |
-| [progressbar](https://github.com/schollz/progressbar) | Progress indicators | MIT |
-| [tablewriter](https://github.com/olekukonko/tablewriter) | ASCII table generation | MIT |
+Configuration is stored in `~/.wayhack-config.json`:
 
-### 🧪 Testing
-
-```bash
-# Run all tests
-go test ./...
-
-# Run tests with coverage
-go test -cover ./...
-
-# Run specific test
-go test -run TestCommandGeneration ./...
-
-# Benchmark tests
-go test -bench=. ./...
+```json
+{
+  "apiUrl": "https://wayhack.sh",
+  "apiKey": "wh_your_api_key_here"
+}
 ```
 
----
+## Dependencies
 
-## 🤝 Contributing
+- [cobra](https://github.com/spf13/cobra) - CLI framework
+- [color](https://github.com/fatih/color) - Colored terminal output
+- [term](https://golang.org/x/term) - Terminal utilities
 
-We welcome contributions from the community! Here's how you can help:
+## Migration from JavaScript Version
 
-### 🐛 Reporting Bugs
+The Go version maintains full compatibility with the JavaScript version:
 
-1. **Check existing issues** to avoid duplicates
-2. **Use the bug report template** when creating new issues
-3. **Provide detailed information** including:
-   - Operating system and version
-   - WayHack CLI version
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Error messages or logs
+- Same command structure and arguments
+- Same configuration file format
+- Same API endpoints and authentication
+- Improved performance and reliability
+- No Node.js dependency required
 
-### 💡 Suggesting Features
+## Troubleshooting
 
-1. **Check the roadmap** for planned features
-2. **Use the feature request template**
-3. **Describe the use case** and benefits
-4. **Provide examples** of how it would work
-
-### 🔧 Code Contributions
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes** following our coding standards
-4. **Add tests** for new functionality
-5. **Update documentation** as needed
-6. **Commit your changes**: `git commit -m 'Add amazing feature'`
-7. **Push to the branch**: `git push origin feature/amazing-feature`
-8. **Open a Pull Request**
-
-### 📝 Coding Standards
-
-- Follow Go best practices and conventions
-- Use meaningful variable and function names
-- Add comments for complex logic
-- Ensure all tests pass
-- Maintain backward compatibility when possible
-
----
-
-## 🐛 Troubleshooting
-
-### ❓ Common Issues
-
-#### Tool Not Found
+### Tool Not Found
+Ensure the tool is installed and available in your PATH:
 ```bash
-# Check if tool is installed
-wayhack check
-
-# Verify PATH configuration
-echo $PATH
-
-# Install missing tools
-# Example for Ubuntu/Debian:
-sudo apt update && sudo apt install ffuf nuclei gobuster
+wayhack check  # Verify tool installation
 ```
 
-#### API Connection Issues
+### API Connection Issues
+Verify your API credentials:
 ```bash
-# Verify API credentials
-wayhack setup
-
-# Test connection
-curl -H "Authorization: Bearer YOUR_API_KEY" https://wayhack.sh/api/health
-
-# Check firewall/proxy settings
+wayhack setup  # Reconfigure API settings
 ```
 
-#### Permission Denied
+### Permission Denied
+Make the binary executable:
 ```bash
-# Make binary executable
 chmod +x wayhack
-
-# Check file permissions
-ls -la wayhack
-
-# Run with sudo if needed (not recommended)
-sudo ./wayhack
 ```
 
-#### Configuration Issues
+### Output Directory Issues
+If you encounter issues with scan output storage:
 ```bash
-# Reset configuration
-rm ~/.wayhack-config.json
-wayhack setup
+# Check output directory permissions
+ls -la ~/.wayhack/outputs/
 
-# Verify configuration
-cat ~/.wayhack-config.json
-
-# Use environment variables as fallback
-export WAYHACK_API_KEY="your_key_here"
+# Manually create output directory if needed
+mkdir -p ~/.wayhack/outputs/
 ```
 
-### 🔍 Debug Mode
+### View Command Not Showing Scans
+If the view command shows no scans:
+- Ensure you've run at least one scan using `wayhack run` or `wayhack generate`
+- Check that the output directory exists: `~/.wayhack/outputs/`
+- Verify scan metadata file exists: `~/.wayhack/outputs/scans.json`
 
-Enable debug mode for detailed logging:
+### Scan Output Corruption
+If scan outputs appear corrupted:
+- Check disk space availability
+- Ensure proper file permissions in the output directory
+- Try running a new scan to verify the issue persists
 
-```bash
-# Enable debug output
-wayhack --debug command
+## License
 
-# Save debug logs to file
-wayhack --debug command 2> debug.log
-
-# Verbose output
-wayhack --verbose command
-```
-
-### 📞 Getting Help
-
-- **📖 Documentation**: [wayhack.sh/docs](https://wayhack.sh/docs)
-- **💬 Discord**: [Join our community](https://discord.gg/wayhack)
-- **🐛 Issues**: [GitHub Issues](https://github.com/ethicalhackingplayground/wayhack-cli/issues)
-- **📧 Email**: support@wayhack.sh
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2024 Ethical Hacking Playground
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-<div align="center">
-
-**⭐ Star this repository if you find it helpful!**
-
-[🔗 Website](https://wayhack.sh) • [📖 Documentation](https://wayhack.sh/docs) • [💬 Discord](https://discord.gg/wayhack) • [🐦 Twitter](https://twitter.com/wayhack)
-
-Made with ❤️ by the [Ethical Hacking Playground](https://github.com/ethicalhackingplayground) team
-
-</div>
+MIT License - see LICENSE file for details.

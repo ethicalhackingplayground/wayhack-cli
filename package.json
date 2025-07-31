@@ -1,0 +1,39 @@
+{
+  "name": "wayhack-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for WayHack bug bounty automation",
+  "main": "index.js",
+  "bin": {
+    "wayhack": "./index.js"
+  },
+  "scripts": {
+    "build": "pkg . --out-path dist",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "bug-bounty",
+    "security",
+    "cli",
+    "automation"
+  ],
+  "author": "WayHack",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "axios": "^1.6.0",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1",
+    "inquirer": "^8.2.6"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "scripts": "index.js",
+    "targets": [
+      "node18-win-x64",
+      "node18-linux-x64",
+      "node18-macos-x64"
+    ]
+  }
+}
