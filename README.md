@@ -1,4 +1,4 @@
-# WayHack CLI (Go Version)
+# WayHack CLI 
 
 A powerful command-line interface for WayHack bug bounty automation, now written in Go for better performance and easier distribution.
 
