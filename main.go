@@ -112,6 +112,7 @@ View Scan Results:
   wayhack view --latest                            View latest scan
   wayhack view --latest --tool ffuf               View latest ffuf scan
   wayhack view --count 10                          View last 10 scans
+  wayhack view --detailed                          List scans with detailed information
 
 Note: 
   - Use 'wayhack run' to execute tools directly with their full arguments
@@ -662,6 +663,7 @@ func viewCmd() *cobra.Command {
 	var latest bool
 	var count int
 	var tool string
+	var detailed bool
 
 	cmd := &cobra.Command{
 		Use:   "view [scan-id]",
@@ -674,7 +676,8 @@ Examples:
   wayhack view --latest                View latest scan
   wayhack view --latest --tool ffuf    View latest ffuf scan
   wayhack view --count 10              View last 10 scans
-  wayhack view --count 5 --tool nuclei View last 5 nuclei scans`,
+  wayhack view --count 5 --tool nuclei View last 5 nuclei scans
+  wayhack view --detailed              List scans with detailed information`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 1 {
 				// View specific scan
@@ -687,11 +690,13 @@ Examples:
 			scans, err := loadScanMetadata()
 			if err != nil {
 				fmt.Printf("%s Failed to load scan metadata: %v\n", red("❌"), err)
+				fmt.Printf("%s Output directory: %s\n", gray(""), getOutputsDir())
 				return
 			}
 
 			if len(scans) == 0 {
 				fmt.Printf("%s No scans found\n", yellow("📭"))
+				fmt.Printf("%s Output directory: %s\n", gray(""), getOutputsDir())
 				fmt.Printf("%s Run some tools first using 'wayhack run <tool> <args>'\n", gray(""))
 				return
 			}
@@ -723,7 +728,11 @@ Examples:
 
 			if latest {
 				// View latest scan
-				viewScanOutput(scans[0].ID)
+				if len(scans) > 0 {
+					viewScanOutput(scans[0].ID)
+				} else {
+					fmt.Printf("%s No scans found\n", yellow("📭"))
+				}
 				return
 			}
 
@@ -732,38 +741,23 @@ Examples:
 				scans = scans[:count]
 			}
 
-			// List scans
-			fmt.Printf("%s Scan History\n", blue("📋"))
-			fmt.Println()
-			fmt.Printf("%-12s %-10s %-8s %-20s %-30s %s\n", "ID", "Tool", "Status", "Timestamp", "Target", "Duration")
-			fmt.Printf("%s\n", strings.Repeat("-", 100))
-
-			for _, scan := range scans {
-				statusIcon := green("✅")
-				if scan.Status == "failed" {
-					statusIcon = red("❌")
-				} else if scan.Status == "running" {
-					statusIcon = yellow("⏳")
-				}
-
-				timestamp := scan.Timestamp.Format("2006-01-02 15:04:05")
-				target := scan.Target
-				if len(target) > 25 {
-					target = target[:22] + "..."
-				}
-
-				fmt.Printf("%-12s %-10s %s %-7s %-20s %-30s %s\n",
-					scan.ID[:12], scan.Tool, statusIcon, scan.Status, timestamp, target, scan.Duration)
+			// Display scan list
+			if detailed {
+				listScansDetailed(scans)
+			} else {
+				listScansTable(scans)
 			}
 
 			fmt.Println()
 			fmt.Printf("%s Use 'wayhack view <scan-id>' to view specific scan output\n", yellow("💡"))
+			fmt.Printf("%s Use 'wayhack view --detailed' for more information\n", gray(""))
 		},
 	}
 
 	cmd.Flags().BoolVarP(&latest, "latest", "l", false, "View latest scan")
 	cmd.Flags().IntVarP(&count, "count", "c", 0, "Number of scans to show (0 = all)")
 	cmd.Flags().StringVarP(&tool, "tool", "t", "", "Filter by tool name")
+	cmd.Flags().BoolVarP(&detailed, "detailed", "d", false, "Show detailed scan information")
 
 	return cmd
 }
@@ -1128,6 +1122,98 @@ func loadScanMetadata() ([]ScanMetadata, error) {
 	return metadata, err
 }
 
+func listScansTable(scans []ScanMetadata) {
+	fmt.Printf("%s Scan History (%d scans)\n", blue("📋"), len(scans))
+	fmt.Println()
+	fmt.Printf("%-12s %-10s %-8s %-20s %-30s %s\n", "ID", "Tool", "Status", "Timestamp", "Target", "Duration")
+	fmt.Printf("%s\n", strings.Repeat("-", 100))
+
+	for _, scan := range scans {
+		statusIcon := green("✅")
+		if scan.Status == "failed" {
+			statusIcon = red("❌")
+		} else if scan.Status == "running" {
+			statusIcon = yellow("⏳")
+		}
+
+		timestamp := scan.Timestamp.Format("2006-01-02 15:04:05")
+		target := scan.Target
+		if len(target) > 25 {
+			target = target[:22] + "..."
+		}
+
+		scanIDShort := scan.ID
+		if len(scanIDShort) > 12 {
+			scanIDShort = scanIDShort[:12]
+		}
+
+		fmt.Printf("%-12s %-10s %s %-7s %-20s %-30s %s\n",
+			scanIDShort, scan.Tool, statusIcon, scan.Status, timestamp, target, scan.Duration)
+	}
+}
+
+func listScansDetailed(scans []ScanMetadata) {
+	fmt.Printf("%s Detailed Scan History (%d scans)\n", blue("📋"), len(scans))
+	fmt.Println()
+
+	for i, scan := range scans {
+		if i > 0 {
+			fmt.Printf("%s\n", strings.Repeat("-", 80))
+		}
+
+		statusIcon := green("✅")
+		statusColor := green
+		if scan.Status == "failed" {
+			statusIcon = red("❌")
+			statusColor = red
+		} else if scan.Status == "running" {
+			statusIcon = yellow("⏳")
+			statusColor = yellow
+		}
+
+		fmt.Printf("%s Scan #%d\n", blue("🔍"), i+1)
+		fmt.Printf("  ID:        %s\n", cyan(scan.ID))
+		fmt.Printf("  Tool:      %s\n", scan.Tool)
+		fmt.Printf("  Status:    %s %s", statusIcon, statusColor(scan.Status))
+		if scan.ExitCode != 0 && scan.Status == "failed" {
+			fmt.Printf(" (exit code: %d)", scan.ExitCode)
+		}
+		fmt.Println()
+		fmt.Printf("  Target:    %s\n", scan.Target)
+		fmt.Printf("  Command:   %s\n", gray(scan.Command))
+		fmt.Printf("  Timestamp: %s\n", scan.Timestamp.Format("2006-01-02 15:04:05"))
+		fmt.Printf("  Duration:  %s\n", scan.Duration)
+		fmt.Printf("  Output:    %s\n", gray(scan.OutputDir))
+
+		// Check if output files exist and show their sizes
+		stdoutFile := filepath.Join(scan.OutputDir, "stdout.txt")
+		stderrFile := filepath.Join(scan.OutputDir, "stderr.txt")
+
+		if info, err := os.Stat(stdoutFile); err == nil {
+			size := formatFileSize(info.Size())
+			fmt.Printf("  Stdout:    %s (%s)\n", gray("stdout.txt"), size)
+		}
+
+		if info, err := os.Stat(stderrFile); err == nil && info.Size() > 0 {
+			size := formatFileSize(info.Size())
+			fmt.Printf("  Stderr:    %s (%s)\n", gray("stderr.txt"), size)
+		}
+	}
+}
+
+func formatFileSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
 func viewScanOutput(scanID string) {
 	// Load metadata to find scan
 	scans, err := loadScanMetadata()
@@ -1136,11 +1222,37 @@ func viewScanOutput(scanID string) {
 		return
 	}
 	
+	if len(scans) == 0 {
+		fmt.Printf("%s No scans found\n", yellow("📭"))
+		fmt.Printf("%s Run some tools first using 'wayhack run <tool> <args>'\n", gray(""))
+		return
+	}
+	
 	var targetScan *ScanMetadata
+	var matches []ScanMetadata
+	
+	// Look for exact match first, then partial matches
 	for _, scan := range scans {
-		if strings.HasPrefix(scan.ID, scanID) {
+		if scan.ID == scanID {
 			targetScan = &scan
 			break
+		}
+		if strings.HasPrefix(scan.ID, scanID) {
+			matches = append(matches, scan)
+		}
+	}
+	
+	// If no exact match, check partial matches
+	if targetScan == nil {
+		if len(matches) == 1 {
+			targetScan = &matches[0]
+		} else if len(matches) > 1 {
+			fmt.Printf("%s Multiple scans match '%s':\n", yellow("⚠️"), scanID)
+			for _, match := range matches {
+				fmt.Printf("  %s - %s (%s)\n", match.ID, match.Tool, match.Timestamp.Format("2006-01-02 15:04:05"))
+			}
+			fmt.Printf("%s Please use a more specific scan ID\n", yellow("💡"))
+			return
 		}
 	}
 	
@@ -1152,43 +1264,77 @@ func viewScanOutput(scanID string) {
 	
 	// Display scan information
 	fmt.Printf("%s Scan Details\n", blue("📋"))
-	fmt.Printf("ID:        %s\n", targetScan.ID)
+	fmt.Printf("%s\n", strings.Repeat("=", 50))
+	fmt.Printf("ID:        %s\n", cyan(targetScan.ID))
 	fmt.Printf("Tool:      %s\n", targetScan.Tool)
 	fmt.Printf("Command:   %s\n", targetScan.Command)
 	fmt.Printf("Target:    %s\n", targetScan.Target)
 	fmt.Printf("Timestamp: %s\n", targetScan.Timestamp.Format("2006-01-02 15:04:05"))
 	fmt.Printf("Duration:  %s\n", targetScan.Duration)
-	fmt.Printf("Status:    %s\n", targetScan.Status)
-	fmt.Printf("Exit Code: %d\n", targetScan.ExitCode)
+	
+	// Status with color
+	statusIcon := green("✅")
+	statusColor := green
+	if targetScan.Status == "failed" {
+		statusIcon = red("❌")
+		statusColor = red
+	} else if targetScan.Status == "running" {
+		statusIcon = yellow("⏳")
+		statusColor = yellow
+	}
+	fmt.Printf("Status:    %s %s", statusIcon, statusColor(targetScan.Status))
+	if targetScan.ExitCode != 0 {
+		fmt.Printf(" (exit code: %d)", targetScan.ExitCode)
+	}
+	fmt.Println()
+	fmt.Printf("Output Dir: %s\n", gray(targetScan.OutputDir))
 	fmt.Println()
 	
 	// Display output files
 	stdoutFile := filepath.Join(targetScan.OutputDir, "stdout.txt")
 	stderrFile := filepath.Join(targetScan.OutputDir, "stderr.txt")
 	
-	// Show stdout
-	if data, err := os.ReadFile(stdoutFile); err == nil && len(data) > 0 {
-		fmt.Printf("%s Standard Output:\n", green("📄"))
-		fmt.Printf("%s\n", strings.Repeat("-", 50))
-		fmt.Print(string(data))
-		if !strings.HasSuffix(string(data), "\n") {
-			fmt.Println()
-		}
-		fmt.Printf("%s\n", strings.Repeat("-", 50))
-		fmt.Println()
+	// Check if output directory exists
+	if _, err := os.Stat(targetScan.OutputDir); os.IsNotExist(err) {
+		fmt.Printf("%s Output directory not found: %s\n", red("❌"), targetScan.OutputDir)
+		fmt.Printf("%s The scan output may have been deleted\n", yellow("⚠️"))
+		return
 	}
+	
+	// Show stdout
+	if data, err := os.ReadFile(stdoutFile); err == nil {
+		if len(data) > 0 {
+			fmt.Printf("%s Standard Output (%s):\n", green("📄"), formatFileSize(int64(len(data))))
+			fmt.Printf("%s\n", strings.Repeat("-", 50))
+			fmt.Print(string(data))
+			if !strings.HasSuffix(string(data), "\n") {
+				fmt.Println()
+			}
+			fmt.Printf("%s\n", strings.Repeat("-", 50))
+		} else {
+			fmt.Printf("%s Standard Output: %s\n", gray("📄"), gray("(empty)"))
+		}
+	} else {
+		fmt.Printf("%s Standard Output: %s\n", red("📄"), red("(file not found)"))
+	}
+	fmt.Println()
 	
 	// Show stderr if there are errors
-	if data, err := os.ReadFile(stderrFile); err == nil && len(data) > 0 {
-		fmt.Printf("%s Standard Error:\n", red("📄"))
-		fmt.Printf("%s\n", strings.Repeat("-", 50))
-		fmt.Print(string(data))
-		if !strings.HasSuffix(string(data), "\n") {
+	if data, err := os.ReadFile(stderrFile); err == nil {
+		if len(data) > 0 {
+			fmt.Printf("%s Standard Error (%s):\n", red("📄"), formatFileSize(int64(len(data))))
+			fmt.Printf("%s\n", strings.Repeat("-", 50))
+			fmt.Print(string(data))
+			if !strings.HasSuffix(string(data), "\n") {
+				fmt.Println()
+			}
+			fmt.Printf("%s\n", strings.Repeat("-", 50))
 			fmt.Println()
 		}
-		fmt.Printf("%s\n", strings.Repeat("-", 50))
-		fmt.Println()
+	} else if !os.IsNotExist(err) {
+		fmt.Printf("%s Error reading stderr file: %v\n", red("❌"), err)
 	}
 	
-	fmt.Printf("%s Output files saved in: %s\n", blue("📁"), targetScan.OutputDir)
+	fmt.Printf("%s Output files location: %s\n", blue("📁"), targetScan.OutputDir)
+	fmt.Printf("%s Use 'wayhack view' to list all scans\n", gray("💡"))
 }
