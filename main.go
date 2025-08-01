@@ -68,7 +68,6 @@ type SubscriptionResponse struct {
 	IsPremium             bool `json:"isPremium"`
 	CanAccessCLI          bool `json:"canAccessCLI"`
 	HasPremiumPlan        bool `json:"hasPremiumPlan"`
-	HasPremiumYearlyPlan  bool `json:"hasPremiumYearlyPlan"`
 	HasCLIAccess          bool `json:"hasCLIAccess"`
 }
 
