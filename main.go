@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -64,11 +65,17 @@ type EnabledToolsResponse struct {
 	Tools []string `json:"tools"`
 }
 
+type SubscriptionPlan struct {
+	Plan             string `json:"plan"`
+	CreatedAt        string `json:"createdAt"`
+	UpdatedAt        string `json:"updatedAt"`
+	SearchesPerMonth int    `json:"searchesPerMonth"`
+	Active           bool   `json:"active"`
+}
+
 type SubscriptionResponse struct {
-	IsPremium             bool `json:"isPremium"`
-	CanAccessCLI          bool `json:"canAccessCLI"`
-	HasPremiumPlan        bool `json:"hasPremiumPlan"`
-	HasCLIAccess          bool `json:"hasCLIAccess"`
+	HasCLIAccess    bool              `json:"hasCLIAccess"`
+	Subscriptions   *SubscriptionPlan `json:"subscriptions"`
 }
 
 var (
@@ -157,7 +164,7 @@ func setupCmd() *cobra.Command {
 			fmt.Printf("%s WayHack CLI Setup\n", blue("🔧"))
 			fmt.Println()
 			fmt.Printf("%s To get your API key:\n", yellow("📝"))
-			fmt.Printf("%s 1. Go to https://wayhack.sh/settings\n", gray(""))
+			fmt.Printf("%s 1. Go to your API server's settings page\n", gray(""))
 			fmt.Printf("%s 2. Navigate to the 'CLI API Keys' section\n", gray(""))
 			fmt.Printf("%s 3. Click 'Create API Key' and copy the generated key\n", gray(""))
 			fmt.Println()
@@ -227,10 +234,10 @@ func checkCmd() *cobra.Command {
 				return
 			}
 
-			if !subscription.CanAccessCLI && !subscription.HasCLIAccess {
+			if !subscription.HasCLIAccess {
 				fmt.Printf("%s Premium subscription required\n", red("❌"))
 				fmt.Printf("%s The WayHack CLI requires a premium subscription to use.\n", yellow(""))
-				fmt.Printf("%s Please visit https://wayhack.sh/plans to upgrade your account.\n", blue("🔗"))
+				fmt.Printf("%s Please visit %s/plans to upgrade your account.\n", blue("🔗"), config.APIUrl)
 				fmt.Printf("%s After upgrading, you'll have access to:\n", blue("✨"))
 				fmt.Printf("%s  • CLI Tool Access\n", gray(""))
 				fmt.Printf("%s  • Execute Tools in Parallel\n", gray(""))
@@ -290,10 +297,10 @@ func runCmd() *cobra.Command {
 				return
 			}
 
-			if !subscription.CanAccessCLI && !subscription.HasCLIAccess {
+			if !subscription.HasCLIAccess {
 				fmt.Printf("%s Premium subscription required\n", red("❌"))
 				fmt.Printf("%s The WayHack CLI requires a premium subscription to use.\n", yellow(""))
-				fmt.Printf("%s Please visit https://wayhack.sh/plans to upgrade your account.\n", blue("🔗"))
+				fmt.Printf("%s Please visit %s/plans to upgrade your account.\n", blue("🔗"), config.APIUrl)
 				fmt.Printf("%s After upgrading, you'll have access to:\n", blue("✨"))
 				fmt.Printf("%s  • CLI Tool Access\n", gray(""))
 				fmt.Printf("%s  • Execute Tools in Parallel\n", gray(""))
@@ -365,10 +372,10 @@ func generateCmd() *cobra.Command {
 				return
 			}
 
-			if !subscription.CanAccessCLI && !subscription.HasCLIAccess {
+			if !subscription.HasCLIAccess {
 				fmt.Printf("%s Premium subscription required\n", red("❌"))
 				fmt.Printf("%s The WayHack CLI requires a premium subscription to use.\n", yellow(""))
-				fmt.Printf("%s Please visit https://wayhack.sh/plans to upgrade your account.\n", blue("🔗"))
+				fmt.Printf("%s Please visit %s/plans to upgrade your account.\n", blue("🔗"), config.APIUrl)
 				fmt.Printf("%s After upgrading, you'll have access to:\n", blue("✨"))
 				fmt.Printf("%s  • CLI Tool Access\n", gray(""))
 				fmt.Printf("%s  • Execute Tools in Parallel\n", gray(""))
@@ -506,10 +513,10 @@ func listCmd() *cobra.Command {
 				return
 			}
 
-			if !subscription.CanAccessCLI && !subscription.HasCLIAccess {
+			if !subscription.HasCLIAccess {
 				fmt.Printf("%s Premium subscription required\n", red("❌"))
 				fmt.Printf("%s The WayHack CLI requires a premium subscription to use.\n", yellow(""))
-				fmt.Printf("%s Please visit https://wayhack.sh/plans to upgrade your account.\n", blue("🔗"))
+				fmt.Printf("%s Please visit %s/plans to upgrade your account.\n", blue("🔗"), config.APIUrl)
 				fmt.Printf("%s After upgrading, you'll have access to:\n", blue("✨"))
 				fmt.Printf("%s  • CLI Tool Access\n", gray(""))
 				fmt.Printf("%s  • Execute Tools in Parallel\n", gray(""))
@@ -571,10 +578,10 @@ Examples:
 				return
 			}
 
-			if !subscription.CanAccessCLI && !subscription.HasCLIAccess {
+			if !subscription.HasCLIAccess {
 				fmt.Printf("%s Premium subscription required\n", red("❌"))
 				fmt.Printf("%s The WayHack CLI requires a premium subscription to use.\n", yellow(""))
-				fmt.Printf("%s Please visit https://wayhack.sh/plans to upgrade your account.\n", blue("🔗"))
+				fmt.Printf("%s Please visit %s/plans to upgrade your account.\n", blue("🔗"), config.APIUrl)
 				fmt.Printf("%s After upgrading, you'll have access to:\n", blue("✨"))
 				fmt.Printf("%s  • CLI Tool Access\n", gray(""))
 				fmt.Printf("%s  • Execute Tools in Parallel\n", gray(""))
@@ -591,6 +598,10 @@ Examples:
 			fmt.Println()
 
 			fmt.Printf("%s Listening for commands...\n", green("✅"))
+
+			// Set up signal handling for graceful shutdown
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 			// Check immediately on start
 			checkForCommands()
@@ -610,6 +621,10 @@ Examples:
 				case <-timeout.C:
 					fmt.Printf("%s Maximum runtime of 5 hours reached. Stopping listener...\n", yellow("⏰"))
 					fmt.Printf("%s Listener stopped automatically\n", green("✅"))
+					return
+				case <-sigChan:
+					fmt.Printf("\n%s Received interrupt signal. Stopping listener...\n", yellow("⚠️"))
+					fmt.Printf("%s Listener stopped gracefully\n", green("✅"))
 					return
 				}
 			}
@@ -666,7 +681,7 @@ func checkForCommands() {
 		fmt.Printf("%s Found %d pending command(s)\n", blue("⚡"), response.Count)
 		
 		for _, command := range response.Commands {
-			if command.Status == "pending" {
+			if command.ID != "" || {
 				fmt.Printf("%s Processing command %s: %s\n", blue("⚡"), command.ID, command.Command)
 				go processServerCommand(command.ID, command.Command, command.Tool, command.URL)
 			}
@@ -816,10 +831,10 @@ Examples:
 					return
 				}
 
-				if !subscription.CanAccessCLI && !subscription.HasCLIAccess {
+				if !subscription.HasCLIAccess {
 					fmt.Printf("%s Premium subscription required\n", red("❌"))
 					fmt.Printf("%s The WayHack CLI requires a premium subscription to use.\n", yellow(""))
-					fmt.Printf("%s Please visit https://wayhack.sh/plans to upgrade your account.\n", blue("🔗"))
+					fmt.Printf("%s Please visit %s/plans to upgrade your account.\n", blue("🔗"), config.APIUrl)
 					fmt.Printf("%s After upgrading, you'll have access to:\n", blue("✨"))
 					fmt.Printf("%s  • CLI Tool Access\n", gray(""))
 					fmt.Printf("%s  • Execute Tools in Parallel\n", gray(""))
@@ -958,25 +973,33 @@ func saveConfig() {
 
 func checkToolInstalled(toolName string) bool {
 	commands := map[string][]string{
-		"ffuf":      {"ffuf", "-V"},
-		"dirsearch": {"dirsearch", "--version"},
-		"nuclei":    {"nuclei", "-version"},
-		"gobuster":  {"gobuster", "version"},
-		"httpx":     {"httpx", "-version"},
+		"ffuf":      {"ffuf", "-h"},
+		"dirsearch": {"dirsearch", "-h"},
+		"nuclei":    {"nuclei", "-h"},
+		"gobuster":  {"gobuster", "-h"}, 
+		"httpx":     {"httpx", "-h"},
 	}
 
-	cmdArgs, exists := commands[toolName]
-	if !exists {
-		// For unknown tools, just check if they exist in PATH
+	cmdArgs, known := commands[toolName]
+	if !known {
+		// For unknown tools, check if binary exists in PATH
 		_, err := exec.LookPath(toolName)
 		return err == nil
 	}
 
+	// Try to run the command with -h to see if it responds
 	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	err := cmd.Run()
-	return err == nil
+
+	// Some tools exit with non-zero on -h, so we also check if the binary is in PATH
+	if err != nil {
+		_, lookErr := exec.LookPath(cmdArgs[0])
+		return lookErr == nil
+	}
+
+	return true
 }
 
 func verifyAPI(apiUrl, apiKey string) bool {
