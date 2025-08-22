@@ -1,260 +1,348 @@
-# WayHack CLI 
+# WayHack CLI
 
-A powerful command-line interface for WayHack bug bounty automation, now written in Go for better performance and easier distribution.
+🚀 **A powerful command-line interface for WayHack bug bounty automation**
 
-## Features
+WayHack CLI is a comprehensive security testing toolkit that bridges the gap between manual penetration testing and automated vulnerability discovery. Built from the ground up in Go, it provides seamless integration with popular security tools while connecting to WayHack's remote API service for command suggestions and enhanced workflow automation.
 
-- **Fast and Lightweight**: Written in Go, no runtime dependencies
-- **Cross-Platform**: Single binary for Windows, Linux, and macOS
-- **Tool Integration**: Direct execution of bug bounty tools (ffuf, nuclei, gobuster, etc.)
-- **Command Generation**: AI-powered command suggestions from WayHack API
-- **Interactive Mode**: Select and run commands interactively
-- **Tool Status Checking**: Verify which tools are installed on your system
-- **Output Tracking**: Automatically saves all tool outputs with metadata for later review
-- **Scan Management**: View and manage previous scan results with filtering options
+## 🌟 Key Features
 
-## Installation
+### Core Capabilities
+- **🔥 High Performance**: Written in Go with zero runtime dependencies - single binary deployment
+- **🌍 Universal Compatibility**: Native support for Windows, Linux, and macOS with consistent behavior
+- **🛠️ Tool Ecosystem Integration**: Direct execution and management of security tools
+- **🔗 API Integration**: Command generation and suggestions via WayHack's remote API service
+- **📊 Comprehensive Tracking**: Automatic capture and organization of all scan outputs with rich metadata
 
-### Quick Install (Recommended)
+### Advanced Workflow Features
+- **🎯 Interactive Command Selection**: Browse, filter, and execute API-generated commands with real-time feedback
+- **📈 Scan History Management**: Complete audit trail of all security testing activities
+- **🔍 Tool Discovery**: Automatic detection and verification of installed security tools
+- **📁 Organized Output Storage**: Structured file system for scan results with searchable metadata
 
-Download the pre-built binary for your platform:
+## 📦 Installation
 
-- **Windows**: [wayhack-windows-amd64.exe](https://wayhack.sh/api/cli/download?platform=win)
-- **Linux**: [wayhack-linux-amd64](https://wayhack.sh/api/cli/download?platform=linux)
-- **macOS Intel**: [wayhack-darwin-amd64](https://wayhack.sh/api/cli/download?platform=macos)
-- **macOS Apple Silicon**: [wayhack-darwin-arm64](https://wayhack.sh/api/cli/download?platform=macos-arm)
-
-### Manual Installation
-
-1. Download the appropriate binary for your platform
-2. Make it executable (Linux/macOS): `chmod +x wayhack-*`
-3. Move to your PATH: `mv wayhack-* /usr/local/bin/wayhack`
-4. Run setup: `wayhack setup`
-
-### Build from Source
+### 🛠️ Build from Source
 
 ```bash
+# Prerequisites: Go 1.21+
 git clone https://github.com/ethicalhackingplayground/wayhack-cli.git
 cd wayhack-cli
+
+# Download dependencies
 go mod download
-go build -o wayhack main.go
+
+# Build for your platform
+go build -ldflags "-s -w" -o wayhack main.go
 ```
 
-## Setup
+## ⚙️ Initial Setup
 
-1. Get your API key from [WayHack Settings](https://wayhack.sh/settings)
-2. Run the setup command:
-   ```bash
-   wayhack setup
-   ```
-3. Enter your API URL and key when prompted
+### 🔑 API Configuration
 
-## Usage
-
-### Basic Commands
+WayHack CLI requires API credentials to access the command generation service. Configure your credentials using:
 
 ```bash
-# Check which tools are installed
+# Interactive setup wizard
+wayhack setup
+
+# Follow the prompts:
+# API URL: https://wayhack.sh (default)
+# API Key: your_generated_api_key_here
+```
+
+## 📋 Available Commands
+
+### 🔧 `wayhack setup`
+
+Configure API credentials for the CLI:
+
+```bash
+wayhack setup
+```
+
+Guides you through:
+1. Enter API URL (default: https://wayhack.sh)
+2. Enter your API key
+3. Verify connection and save configuration
+
+### 🔍 `wayhack check`
+
+Verify API configuration and check for installed security tools:
+
+```bash
 wayhack check
+```
 
-# List available tools from API
+Checks for:
+- API configuration validity
+- Premium subscription status
+- Installed tools: ffuf, dirsearch, nuclei, gobuster, httpx
+
+### 📋 `wayhack list`
+
+Display available tools from the API:
+
+```bash
 wayhack list
+```
 
-# View scan results and history
+Shows all enabled tools and indicates whether each is installed on your system.
+
+### 🔍 `wayhack search`
+
+Search for URLs and endpoints using various sources:
+
+```bash
+# Basic domain search
+wayhack search --domain example.com
+
+# Search with specific sources
+wayhack search --domain example.com --sources wayback,commoncrawl
+
+# Include subdomains
+wayhack search --domain example.com --include-subdomains
+
+# Filter by file extensions
+wayhack search --domain example.com --extensions php,asp,jsp
+
+# Search specific path
+wayhack search --domain example.com --path /admin
+
+# Limit results
+wayhack search --domain example.com --limit 100
+
+# Save output to file
+wayhack search --domain example.com --output results.txt
+
+# Show only parameters
+wayhack search --domain example.com --only-params
+
+# Exclude certain extensions
+wayhack search --domain example.com --exclude-extensions css,js,png
+
+# Sort by uniqueness
+wayhack search --domain example.com --sort-by-uniqueness
+
+# Use proxies
+wayhack search --domain example.com --proxies proxy1,proxy2
+
+# Silent mode
+wayhack search --domain example.com --silent
+```
+
+**Available Flags:**
+- `--domain` (required): Target domain to search supports regex for an example (*.bmw.com)
+- `--sources`: Comma-separated list of sources to use
+- `--include-subdomains`: Include subdomains in search
+- `--extensions`: Comma-separated list of file extensions to include
+- `--path`: Specific path to search for
+- `--output`: Output file path
+- `--limit`: Maximum number of results
+- `--only-params`: Show only URLs with parameters
+- `--exclude-extensions`: Comma-separated list of extensions to exclude
+- `--sort-by-uniqueness`: Sort results by uniqueness
+- `--proxies`: Comma-separated list of proxies
+- `--silent`: Run in silent mode
+
+### 🛠️ `wayhack run`
+
+Execute security tools directly with automatic output capture:
+
+```bash
+# Run a tool with arguments
+wayhack run nuclei -u http://example.com -severity critical
+
+# Run with complex arguments
+wayhack run ffuf -u http://example.com/FUZZ -w wordlist.txt -mc 200
+```
+
+Features:
+- Automatic output capture and organization
+- Scan ID generation for result tracking
+- Premium subscription verification
+- Tool installation verification
+
+### 🎯 `wayhack generate`
+
+Generate API-suggested commands for security testing:
+
+```bash
+# Generate commands for a tool and target
+wayhack generate nuclei http://example.com
+
+# Filter by category
+wayhack generate --category web nuclei http://example.com
+
+# Interactive mode for command selection
+wayhack generate --interactive nuclei http://example.com
+```
+
+**Available Flags:**
+- `--category`: Filter commands by category
+- `--interactive`: Enable interactive command selection mode
+
+### 📊 `wayhack view`
+
+View scan results and history:
+
+```bash
+# List all scans
 wayhack view
 
-# Show version information
+# View latest scan
+wayhack view --latest
+
+# View specific number of recent scans
+wayhack view --count 10
+
+# Filter by tool
+wayhack view --tool nuclei
+
+# View detailed information
+wayhack view --detailed
+
+# View scan statistics
+wayhack view --stats
+
+# Generate HTML report
+wayhack view --report html
+
+# Generate PDF report
+wayhack view --report pdf
+
+# View specific scan by ID
+wayhack view scan_id_here
+```
+
+**Available Flags:**
+- `--latest`: Show most recent scan
+- `--count`: Number of recent scans to show
+- `--tool`: Filter by specific tool
+- `--detailed`: Show detailed scan information
+- `--stats`: Show scan statistics
+- `--report`: Generate report (html/pdf)
+
+### 🎧 `wayhack listen`
+
+Run in background mode to poll for and execute commands:
+
+```bash
+# Start listening for commands
+wayhack listen
+
+# Listen with custom polling interval (default: 30 seconds)
+wayhack listen --interval 60
+```
+
+Features:
+- Polls server every 30 seconds (configurable)
+- Executes commands in background
+- 5-hour runtime limit
+- Automatic premium subscription verification
+
+### ℹ️ `wayhack version`
+
+Display version and system information:
+
+```bash
 wayhack version
 ```
 
-### Direct Tool Execution
+Shows:
+- CLI version
+- Go version
+- Platform information
+- Build details
+
+### ❓ `wayhack help`
+
+Display help information:
 
 ```bash
-# Run ffuf with custom parameters
-wayhack run ffuf -u http://example.com/FUZZ -w wordlist.txt
+# General help
+wayhack help
 
-# Run nuclei scan
-wayhack run nuclei -u http://example.com -t templates/
-
-# Run gobuster directory scan
-wayhack run gobuster dir -u http://example.com -w /usr/share/wordlists/dirb/common.txt
+# Command-specific help
+wayhack help search
+wayhack help generate
 ```
 
-### Command Generation
+## 🔧 Configuration
+
+WayHack CLI stores configuration in:
+- **Linux/macOS**: `~/.wayhack-config.json`
+- **Windows**: `%USERPROFILE%\.wayhack-config.json`
+
+Configuration includes:
+- API URL and credentials
+- Output directory settings
+- Tool preferences
+
+## 🛠️ Supported Tools
+
+The CLI integrates with common security tools:
+- **ffuf**: Fast web fuzzer
+- **dirsearch**: Directory scanner
+- **nuclei**: Vulnerability scanner
+- **gobuster**: Directory/DNS brute-forcer
+- **httpx**: HTTP toolkit
+
+And supports execution of any command-line security tool installed on your system.
+
+## 📝 Examples
+
+### Basic Workflow
 
 ```bash
-# Generate commands for a tool and URL
-wayhack generate ffuf http://example.com
+# 1. Setup API credentials
+wayhack setup
 
-# Interactive mode - select and run commands
-wayhack generate nuclei http://example.com --interactive
+# 2. Check system and tools
+wayhack check
 
-# Filter by category
-wayhack generate dirsearch http://example.com --category "Web Application"
-```
+# 3. List available tools
+wayhack list
 
-### View Scan Results
+# 4. Search for URLs
+wayhack search --domain example.com --include-subdomains
 
-All tool executions are automatically tracked and saved. Use the `view` command to access previous scan results:
+# 5. Generate commands for testing
+wayhack generate nuclei http://example.com
 
-```bash
-# List all previous scans
-wayhack view
+# 6. Run a security tool
+wayhack run nuclei -u http://example.com -severity critical
 
-# View a specific scan by ID
-wayhack view scan_20240101_120000_nmap
-
-# View the latest scan
+# 7. View results
 wayhack view --latest
-
-# View the last 5 scans
-wayhack view --count 5
-
-# View latest scan from a specific tool
-wayhack view --tool nuclei --latest
-
-# View last 10 scans from a specific tool
-wayhack view --tool ffuf --count 10
 ```
 
-#### Scan Output Structure
-
-Each scan creates a unique directory with the following structure:
-```
-~/.wayhack/outputs/
-├── scan_20240101_120000_nmap/
-│   ├── stdout.txt          # Tool output
-│   ├── stderr.txt          # Error output
-│   └── metadata.json      # Scan metadata
-├── scan_20240101_130000_nuclei/
-│   ├── stdout.txt
-│   ├── stderr.txt
-│   └── metadata.json
-└── scans.json             # Global scan index
-```
-
-#### Scan Metadata
-
-Each scan includes detailed metadata:
-- **Scan ID**: Unique identifier with timestamp
-- **Tool**: Security tool used
-- **Command**: Full command executed
-- **Target**: Target URL or IP
-- **Timestamp**: When the scan was executed
-- **Duration**: How long the scan took
-- **Status**: Success or failure
-- **Exit Code**: Tool exit code
-
-## Supported Tools
-
-The CLI can execute and generate commands for:
-
-- **ffuf** - Fast web fuzzer
-- **dirsearch** - Directory/file brute-forcer
-- **nuclei** - Vulnerability scanner
-- **gobuster** - Directory/DNS/vhost brute-forcer
-- **httpx** - HTTP toolkit
-- And any other command-line tool installed on your system
-
-## Building
-
-### Prerequisites
-
-- Go 1.21 or later
-
-### Build Commands
+### Advanced Usage
 
 ```bash
-# Build for current platform
-go build -o wayhack .
+# Search with multiple filters
+wayhack search --domain example.com --extensions php,asp --exclude-extensions css,js --limit 500
 
-# Build for all platforms
-./build.sh    # Linux/macOS
-build.bat     # Windows
+# Interactive command generation
+wayhack generate --interactive --category web nuclei http://example.com
+
+# Generate detailed reports
+wayhack view --tool nuclei --report html
+
+# Background monitoring
+wayhack listen --interval 45
 ```
 
-### Cross-Platform Build
+## 🔒 Security Notes
 
-```bash
-# Windows
-GOOS=windows GOARCH=amd64 go build -o wayhack-windows.exe .
+- API keys are stored securely in local configuration files
+- All tool execution is performed locally on your system
+- Scan results are stored locally unless explicitly shared
+- Premium subscription required for CLI access
 
-# Linux
-GOOS=linux GOARCH=amd64 go build -o wayhack-linux .
+## 📞 Support
 
-# macOS
-GOOS=darwin GOARCH=amd64 go build -o wayhack-macos .
-```
-
-## Configuration
-
-Configuration is stored in `~/.wayhack-config.json`:
-
-```json
-{
-  "apiUrl": "https://wayhack.sh",
-  "apiKey": "wh_your_api_key_here"
-}
-```
-
-## Dependencies
-
-- [cobra](https://github.com/spf13/cobra) - CLI framework
-- [color](https://github.com/fatih/color) - Colored terminal output
-- [term](https://golang.org/x/term) - Terminal utilities
-
-## Migration from JavaScript Version
-
-The Go version maintains full compatibility with the JavaScript version:
-
-- Same command structure and arguments
-- Same configuration file format
-- Same API endpoints and authentication
-- Improved performance and reliability
-- No Node.js dependency required
-
-## Troubleshooting
-
-### Tool Not Found
-Ensure the tool is installed and available in your PATH:
-```bash
-wayhack check  # Verify tool installation
-```
-
-### API Connection Issues
-Verify your API credentials:
-```bash
-wayhack setup  # Reconfigure API settings
-```
-
-### Permission Denied
-Make the binary executable:
-```bash
-chmod +x wayhack
-```
-
-### Output Directory Issues
-If you encounter issues with scan output storage:
-```bash
-# Check output directory permissions
-ls -la ~/.wayhack/outputs/
-
-# Manually create output directory if needed
-mkdir -p ~/.wayhack/outputs/
-```
-
-### View Command Not Showing Scans
-If the view command shows no scans:
-- Ensure you've run at least one scan using `wayhack run` or `wayhack generate`
-- Check that the output directory exists: `~/.wayhack/outputs/`
-- Verify scan metadata file exists: `~/.wayhack/outputs/scans.json`
-
-### Scan Output Corruption
-If scan outputs appear corrupted:
-- Check disk space availability
-- Ensure proper file permissions in the output directory
-- Try running a new scan to verify the issue persists
-
-## License
-
-MIT License - see LICENSE file for details.
+For issues, feature requests, or questions:
+- GitHub Issues: [wayhack-cli/issues](https://github.com/ethicalhackingplayground/wayhack-cli/issues)
+- Documentation: [wayhack.sh/docs](https://docs.wayhack.sh)
+- Community: [discord](https://discord.gg/HyjK4eUQAp)
+- Email: [support@wayhack.sh](mailto:support@wayhack.sh)
